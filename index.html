@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maintenance Tracker</title>
+<style>
+  :root {
+    --bg: #e4e8ec;
+    --panel: #f6f8fa;
+    --ink: #17232d;
+    --muted: #5b6b78;
+    --line: #c3ccd4;
+    --accent: #f2b705;
+    --high: #b3261e;
+    --medium: #9a6a00;
+    --low: #2f6b4f;
+    --font: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--ink); line-height: 1.5; }
+  header { background: var(--ink); color: #fff; padding: 20px 24px; border-bottom: 6px solid var(--accent); }
+  header h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: .01em; }
+  header p { margin: 2px 0 0; color: #b9c5cf; font-size: .95rem; }
+  main { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 20px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; border-left: 5px solid var(--ink); }
+  .stat strong { display: block; font-size: 1.8rem; line-height: 1.1; }
+  .stat span { color: var(--muted); font-size: .9rem; }
+  .stat.overdue { border-left-color: var(--high); }
+  .stat.overdue strong { color: var(--high); }
+  section { background: var(--panel); border: 1px solid var(--line); padding: 16px; }
+  h2 { margin: 0 0 12px; font-size: 1.1rem; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+  label { display: grid; gap: 2px; font-size: .85rem; color: var(--muted); }
+  input, select, button { font: inherit; padding: 8px 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
+  button { cursor: pointer; background: var(--ink); color: #fff; border-color: var(--ink); }
+  button:hover { background: #2b3f4e; }
+  button.ghost { background: transparent; color: var(--ink); }
+  button.ghost:hover { background: #e4e8ec; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .msg { margin: 8px 0 0; min-height: 1.3em; color: var(--high); font-size: .9rem; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li.task { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  li.task:first-child { border-top: 0; }
+  .task .title { flex: 1 1 220px; }
+  .task.done .title { text-decoration: line-through; color: var(--muted); }
+  .task .meta { color: var(--muted); font-size: .85rem; }
+  .tag { font-size: .8rem; font-weight: 600; padding: 1px 8px; border: 1px solid currentColor; }
+  .tag.high { color: var(--high); } .tag.medium { color: var(--medium); } .tag.low { color: var(--low); }
+  .overdue-flag { color: var(--high); font-weight: 600; font-size: .85rem; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .empty { color: var(--muted); padding: 8px 0; }
+  .machines { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line); background: #fff; padding: 4px 6px 4px 10px; font-size: .9rem; }
+  .chip button { padding: 0 6px; background: transparent; color: var(--muted); border: 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Maintenance Tracker</h1>
+  <p>Keep track of machines and the maintenance jobs they need.</p>
+</header>
+
+<main>
+  <div class="stats" id="stats" aria-live="polite"></div>
+
+  <section>
+    <h2>Machines</h2>
+    <form id="machine-form">
+      <label>Name <input id="m-name" required minlength="2" maxlength="100" placeholder="e.g. Lathe 1"></label>
+      <label>Location <input id="m-loc" maxlength="100" placeholder="e.g. Bay A"></label>
+      <button type="submit">Add machine</button>
+    </form>
+    <p class="msg" id="machine-msg" role="alert"></p>
+    <div class="machines" id="machines"></div>
+  </section>
+
+  <section>
+    <h2>Add a task</h2>
+    <form id="task-form">
+      <label>Machine <select id="t-machine" required></select></label>
+      <label>Task <input id="t-title" required minlength="3" maxlength="200" placeholder="e.g. Replace coolant"></label>
+      <label>Priority
+        <select id="t-priority"><option>low</option><option selected>medium</option><option>high</option></select>
+      </label>
+      <label>Due date <input id="t-due" type="date"></label>
+      <button type="submit">Add task</button>
+    </form>
+    <p class="msg" id="task-msg" role="alert"></p>
+  </section>
+
+  <section>
+    <h2>Tasks</h2>
+    <div class="filters">
+      <label>Status
+        <select id="f-status"><option value="">all</option><option value="open">open</option><option value="done">done</option></select>
+      </label>
+      <label>Priority
+        <select id="f-priority"><option value="">all</option><option>high</option><option>medium</option><option>low</option></select>
+      </label>
+    </div>
+    <ul id="tasks"></ul>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let machines = [];
+
+// One small helper for every API call: JSON in, JSON out, readable errors.
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  if (res.status === 204) return null;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = Array.isArray(data.detail) ? data.detail.map((d) => d.msg).join(", ") : data.detail;
+    throw new Error(detail || "Something went wrong");
+  }
+  return data;
+}
+
+// Build elements with textContent (never innerHTML) so user input can't inject HTML/JS (XSS).
+function el(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  Object.assign(node, props);
+  children.forEach((c) => node.append(c));
+  return node;
+}
+
+function renderStats(s) {
+  const box = $("stats");
+  box.replaceChildren();
+  [["Machines", s.machines, ""], ["Open tasks", s.open_tasks, ""], ["Done", s.done_tasks, ""],
+   ["Overdue", s.overdue_tasks, "overdue"]].forEach(([label, value, cls]) => {
+    box.append(el("div", { className: "stat " + cls }, el("strong", { textContent: value }), el("span", { textContent: label })));
+  });
+}
+
+function renderMachines() {
+  const box = $("machines");
+  box.replaceChildren();
+  if (!machines.length) box.append(el("p", { className: "empty", textContent: "No machines yet. Add your first one above." }));
+  machines.forEach((m) => {
+    const label = m.location ? `${m.name} (${m.location})` : m.name;
+    const del = el("button", { textContent: "×", title: `Delete ${m.name}`, type: "button" });
+    del.setAttribute("aria-label", `Delete ${m.name}`);
+    del.onclick = async () => {
+      if (!confirm(`Delete ${m.name} and all its tasks?`)) return;
+      await api(`/machines/${m.id}`, { method: "DELETE" });
+      refresh();
+    };
+    box.append(el("span", { className: "chip" }, el("span", { textContent: label }), del));
+  });
+  const select = $("t-machine");
+  select.replaceChildren(...machines.map((m) => el("option", { value: m.id, textContent: m.name })));
+}
+
+function renderTasks(tasks) {
+  const list = $("tasks");
+  list.replaceChildren();
+  if (!tasks.length) list.append(el("li", { className: "empty", textContent: "No tasks match. Add one above or change the filters." }));
+  const today = new Date().toISOString().slice(0, 10);
+  tasks.forEach((t) => {
+    const machine = machines.find((m) => m.id === t.machine_id);
+    const isOverdue = t.status === "open" && t.due_date && t.due_date < today;
+    const toggle = el("button", { className: "ghost", type: "button", textContent: t.status === "open" ? "Mark done" : "Reopen" });
+    toggle.onclick = async () => {
+      await api(`/tasks/${t.id}`, { method: "PATCH", body: { status: t.status === "open" ? "done" : "open" } });
+      refresh();
+    };
+    const remove = el("button", { className: "ghost", type: "button", textContent: "Delete" });
+    remove.onclick = async () => { await api(`/tasks/${t.id}`, { method: "DELETE" }); refresh(); };
+    const meta = [machine ? machine.name : "", t.due_date ? "due " + t.due_date : "no due date"].filter(Boolean).join(", ");
+    const li = el("li", { className: "task " + t.status },
+      el("span", { className: "tag " + t.priority, textContent: t.priority }),
+      el("span", { className: "title", textContent: t.title }),
+      el("span", { className: "meta", textContent: meta }),
+      ...(isOverdue ? [el("span", { className: "overdue-flag", textContent: "Overdue" })] : []),
+      toggle, remove);
+    list.append(li);
+  });
+}
+
+async function refresh() {
+  const params = new URLSearchParams();
+  if ($("f-status").value) params.set("status", $("f-status").value);
+  if ($("f-priority").value) params.set("priority", $("f-priority").value);
+  [machines] = await Promise.all([api("/machines")]);
+  const [tasks, stats] = await Promise.all([api("/tasks?" + params), api("/stats")]);
+  renderMachines(); renderTasks(tasks); renderStats(stats);
+}
+
+$("machine-form").onsubmit = async (e) => {
+  e.preventDefault();
+  $("machine-msg").textContent = "";
+  try {
+    await api("/machines", { method: "POST", body: { name: $("m-name").value.trim(), location: $("m-loc").value.trim() } });
+    e.target.reset(); refresh();
+  } catch (err) { $("machine-msg").textContent = err.message; }
+};
+
+$("task-form").onsubmit = async (e) => {
+  e.preventDefault();
+  $("task-msg").textContent = "";
+  const body = { title: $("t-title").value.trim(), priority: $("t-priority").value, due_date: $("t-due").value || null };
+  try {
+    await api(`/machines/${$("t-machine").value}/tasks`, { method: "POST", body });
+    $("t-title").value = ""; $("t-due").value = ""; refresh();
+  } catch (err) { $("task-msg").textContent = err.message; }
+};
+
+$("f-status").onchange = $("f-priority").onchange = refresh;
+refresh();
+</script>
+</body>
+</html>
